@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather App with Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f4f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    h1 {
+      color: #333;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+
+    .weather-container {
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 300px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .weather-container h3 {
+      font-size: 1.8rem;
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .weather-container p {
+      font-size: 1.2rem;
+      margin: 5px 0;
+      color: #555;
+    }
+
+    .weather-container button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      margin-top: 10px;
+    }
+
+    .weather-container button:hover {
+      background-color: #45a049;
+    }
+
+    #map {
+      height: 400px;
+      width: 100%;
+      margin-top: 30px;
+      border-radius: 10px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    .error-message {
+      color: red;
+      font-size: 1.2rem;
+    }
+
+    .loading {
+      color: #555;
+      font-size: 1.2rem;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Weather App</h1>
+
+  <div class="weather-container">
+    <input type="text" id="city-input" placeholder="Enter city name" />
+    <button id="get-weather-btn">Get Weather</button>
+    <div id="weather-info" class="loading">Enter a city name to get the weather.</div>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const apiKey = "b20ee56d083b6d7d99c7d8a93b3e8f94"; // Replace with your actual OpenWeather API key
+    const getWeatherBtn = document.getElementById("get-weather-btn");
+    const cityInput = document.getElementById("city-input");
+    const weatherInfo = document.getElementById("weather-info");
+    let map;
+
+    getWeatherBtn.addEventListener("click", () => {
+      const city = cityInput.value.trim();
+      if (city === "") {
+        alert("Please enter a city name!");
+        return;
+      }
+
+      weatherInfo.innerHTML = "Loading..."; // Show loading message
+
+      fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (data.cod === "404") {
+            weatherInfo.innerHTML = "City not found!";
+            console.log(data); // Log data for debugging
+          } else {
+            const { main, weather, wind, coord } = data;
+            weatherInfo.innerHTML = `
+              <h3>Weather in ${city}</h3>
+              <p><strong>Temperature:</strong> ${main.temp}°C</p>
+              <p><strong>Humidity:</strong> ${main.humidity}%</p>
+              <p><strong>Wind Speed:</strong> ${wind.speed} m/s</p>
+              <p><strong>Condition:</strong> ${weather[0].description}</p>
+            `;
+            // Initialize or update the map with the city coordinates (latitude, longitude)
+            initMap(coord.lat, coord.lon, city, weather[0].description);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);  // Log any error details
+          weatherInfo.innerHTML = "Error fetching data!";
+        });
+    });
+
+    // Function to initialize OpenStreetMap using Leaflet.js
+    function initMap(lat, lon, city, description) {
+      if (map) {
+        map.setView([lat, lon], 10); // If map already exists, update its center
+      } else {
+        map = L.map('map').setView([lat, lon], 10);  // Initialize map with city coordinates
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+      }
+
+      // Create a marker at the city location
+      L.marker([lat, lon]).addTo(map)
+        .bindPopup(`<b>${city}</b><br>Weather Condition: ${description}`)
+        .openPopup();
+    }
+  </script>
+</body>
+</html>
